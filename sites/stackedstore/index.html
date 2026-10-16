@@ -1,0 +1,847 @@
+<title>Stacked Store Inventory</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&display=swap">
+<style>
+/* Layout: storefront header, four count tiles, then a filter rail beside a stock table. Single light look, matching stackedstore.com. */
+:root {
+  color-scheme: light;
+  --ink: #000000;
+  --paper: #ffffff;
+  --sand: #f2efea;          /* product-photo backdrop tone on the site */
+  --line: #d9d4cc;
+  --muted: #6b665e;
+  --in: #1f6b45;
+  --out: #a3281f;
+  --untracked: #6b665e;
+  --display: "Anton", "Helvetica Neue", Impact, sans-serif;
+  --body: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --s1: .75rem; --s2: .875rem; --s3: 1rem; --s4: 1.25rem; --s5: 2rem; --s6: 3rem;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--paper); color: var(--ink); }
+body { font-family: var(--body); font-size: var(--s2); line-height: 1.45; }
+a { color: inherit; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.wrap { max-width: 1440px; margin: 0 auto; padding-inline: 16px; }
+@media (min-width: 720px) { .wrap { padding-inline: 32px; } }
+
+/* Header */
+.top { border-bottom: 1px solid var(--ink); padding-block: var(--s4); }
+.top .wrap { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s3); }
+.brandmark img { height: 28px; width: auto; display: block; }
+.title { font-family: var(--display); font-size: clamp(2rem, 5vw, 3.25rem); line-height: .95; text-transform: uppercase; letter-spacing: .01em; margin: var(--s3) 0 0; text-wrap: balance; }
+.asof { text-align: right; font-size: var(--s1); color: var(--muted); }
+.asof b { display: block; color: var(--ink); font-size: var(--s2); }
+
+/* Tiles */
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--ink); }
+.tile { padding: var(--s4) var(--s3) var(--s4) 0; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: .25rem; background: none; border-top: 0; border-bottom: 0; border-left: 0; text-align: left; }
+.tile + .tile { padding-left: var(--s3); }
+.tile:last-child { border-right: 0; }
+.tile .num { font-family: var(--display); font-size: clamp(1.75rem, 4vw, 2.75rem); line-height: 1; font-variant-numeric: tabular-nums; }
+.tile .lab { font-size: var(--s1); text-transform: uppercase; letter-spacing: .06em; }
+.tile .sub { font-size: var(--s1); color: var(--muted); }
+.tile.in .num { color: var(--in); }
+.tile.out .num { color: var(--out); }
+button.tile { cursor: pointer; }
+button.tile:hover .lab { text-decoration: underline; }
+@media (max-width: 720px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile, .tile + .tile { padding: var(--s3) var(--s2); }
+  .tile:nth-child(2) { border-right: 0; }
+  .tile:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+}
+
+/* Body grid */
+.main { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: var(--s5); padding-block: var(--s5); }
+@media (max-width: 960px) { .main { grid-template-columns: minmax(0, 1fr); gap: var(--s3); padding-block: var(--s4); } }
+
+/* Filter rail */
+.rail { display: flex; flex-direction: column; gap: var(--s4); align-self: start; }
+.rail h2 { font-family: var(--display); font-size: var(--s4); text-transform: uppercase; margin: 0; letter-spacing: .02em; }
+.fgroup { display: flex; flex-direction: column; gap: .5rem; }
+.flabel { font-size: var(--s1); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
+.fhint { font-size: var(--s1); color: var(--muted); }
+.field { width: 100%; border: 1px solid var(--ink); background: var(--paper); padding: .5rem .625rem; border-radius: 0; min-width: 0; }
+.range { display: grid; grid-template-columns: 1fr auto 1fr; gap: .375rem; align-items: center; }
+.range span { color: var(--muted); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--ink); }
+.seg button { border: 0; background: var(--paper); padding: .5rem; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.brands { border: 1px solid var(--line); max-height: 260px; overflow-y: auto; }
+.brands label { display: flex; gap: .5rem; align-items: center; padding: .3rem .5rem; cursor: pointer; }
+.brands label:hover { background: var(--sand); }
+.brands .bn { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.brands .bc { color: var(--muted); font-size: var(--s1); font-variant-numeric: tabular-nums; }
+.brands input { accent-color: var(--ink); margin: 0; }
+.linkbtn { background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; font-size: var(--s1); align-self: flex-start; }
+.btn { border: 1px solid var(--ink); background: var(--paper); padding: .625rem 1rem; cursor: pointer; text-transform: uppercase; letter-spacing: .06em; font-size: var(--s1); font-weight: 700; }
+.btn:hover { background: var(--ink); color: var(--paper); }
+.btn.solid { background: var(--ink); color: var(--paper); }
+.filter-toggle { display: none; }
+.rail-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); }
+.rail-close { display: none; }
+
+@media (max-width: 960px) {
+  .filter-toggle { display: inline-flex; gap: .5rem; align-items: center; }
+  .rail { position: fixed; inset: 0; z-index: 20; background: var(--paper); overflow-y: auto; padding: calc(env(safe-area-inset-top, 0px) + var(--s4)) 16px calc(env(safe-area-inset-bottom, 0px) + var(--s4)); }
+  .rail:not(.open) { display: none; }
+  .rail-close { display: inline-block; }
+  .brands { max-height: 40vh; }
+}
+
+/* Table area */
+.results { min-width: 0; display: flex; flex-direction: column; gap: var(--s3); }
+.bar { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; justify-content: space-between; }
+.tabs { display: flex; flex-wrap: wrap; border: 1px solid var(--ink); }
+.tabs button { border: 0; border-right: 1px solid var(--ink); background: var(--paper); padding: .55rem .9rem; cursor: pointer; display: flex; gap: .4rem; align-items: baseline; text-transform: uppercase; letter-spacing: .04em; font-size: var(--s1); font-weight: 700; }
+.tabs button:last-child { border-right: 0; }
+.tabs button .c { font-weight: 400; font-variant-numeric: tabular-nums; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+.count { font-size: var(--s1); color: var(--muted); }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.export-msg { font-size: var(--s1); color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: .375rem; }
+.chip { border: 1px solid var(--ink); background: var(--sand); padding: .2rem .5rem; font-size: var(--s1); display: inline-flex; gap: .375rem; align-items: center; cursor: pointer; }
+.chip span { font-weight: 700; }
+
+.tablewrap { overflow-x: auto; border-top: 1px solid var(--ink); }
+table { border-collapse: collapse; width: 100%; min-width: 860px; }
+th, td { padding: .55rem .5rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { font-size: var(--s1); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; position: sticky; top: 0; background: var(--paper); border-bottom: 1px solid var(--ink); }
+th.grp { border-bottom: 0; padding-bottom: 0; color: var(--muted); font-weight: 400; text-align: center; }
+th button { background: none; border: 0; padding: 0; cursor: pointer; text-transform: inherit; letter-spacing: inherit; font-weight: 700; font-size: inherit; display: inline-flex; gap: .25rem; align-items: center; }
+th button .arr { width: .7em; display: inline-block; }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+th.num button { flex-direction: row-reverse; }
+td.prod { min-width: 260px; max-width: 420px; }
+td.date { white-space: nowrap; }
+@media (max-width: 720px) {
+  td.prod { min-width: 190px; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .tabs button { border-right: 0; border-bottom: 1px solid var(--ink); }
+  .tabs button:nth-child(odd) { border-right: 1px solid var(--ink); }
+  .tabs button:nth-last-child(-n+2) { border-bottom: 0; }
+}
+td.prod a { text-decoration: none; font-weight: 700; }
+td.prod a:hover { text-decoration: underline; }
+td.prod .meta { color: var(--muted); font-size: var(--s1); }
+tr:hover td { background: var(--sand); }
+td.zero { color: #b4ada2; }
+td.active-ch { font-weight: 700; }
+.pill { display: inline-block; padding: .1rem .45rem; font-size: .6875rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; border: 1px solid currentColor; white-space: nowrap; }
+.pill.in_stock { color: var(--in); }
+.pill.out_of_stock { color: var(--out); }
+.pill.not_tracked { color: var(--untracked); }
+.stock.neg { color: var(--out); }
+.was { color: var(--muted); text-decoration: line-through; font-size: var(--s1); margin-left: .25rem; }
+.empty { padding: var(--s5) 0; text-align: center; color: var(--muted); }
+.pager { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.pager .btns { display: flex; gap: .375rem; }
+.pager .btn[disabled] { opacity: .35; cursor: default; background: var(--paper); color: var(--ink); }
+.loading { padding: var(--s6) 0; text-align: center; color: var(--muted); }
+
+/* View switch */
+.views { display: flex; gap: var(--s4); border-bottom: 1px solid var(--line); }
+.views button { background: none; border: 0; border-bottom: 3px solid transparent; padding: var(--s3) 0 .6rem; cursor: pointer; font-family: var(--display); font-size: var(--s4); text-transform: uppercase; letter-spacing: .02em; color: var(--muted); }
+.views button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.views button:hover { color: var(--ink); }
+
+/* Site search table */
+td.term { font-weight: 700; min-width: 140px; overflow-wrap: anywhere; }
+td.term .meta { font-weight: 400; color: var(--muted); font-size: var(--s1); }
+td.opened { min-width: 320px; }
+.opened-list { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+.opened-list li { display: flex; flex-wrap: wrap; gap: .1rem .5rem; align-items: baseline; }
+.opened-list a { text-decoration: none; font-weight: 700; }
+.opened-list a:hover { text-decoration: underline; }
+.opened-list .gone { color: var(--muted); }
+.opened-list .facts { color: var(--muted); font-size: var(--s1); font-variant-numeric: tabular-nums; }
+@media (max-width: 720px) {
+  .stable { min-width: 0; }
+  .stable tr { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr)); }
+  .stable th { white-space: normal; }
+  .stable th:last-child { display: none; }
+  .stable td { border-bottom: 0; }
+  .stable td.opened { grid-column: 1 / -1; min-width: 0; border-bottom: 1px solid var(--line); padding-top: 0; }
+  .stable td.empty, .stable td.loading { grid-column: 1 / -1; }
+}
+.chk { display: flex; gap: .5rem; align-items: flex-start; cursor: pointer; }
+.chk input { accent-color: var(--ink); margin: .2rem 0 0; }
+
+/* Footer */
+.notes { border-top: 1px solid var(--ink); padding-block: var(--s4); color: var(--muted); font-size: var(--s1); }
+.notes ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .25rem; max-width: 80ch; }
+.foot { background: var(--ink); color: var(--paper); padding-block: var(--s4); }
+.foot .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s4); justify-content: space-between; }
+.foot .by { display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap; }
+.foot .by small { text-transform: uppercase; letter-spacing: .08em; font-size: .6875rem; color: #bdb8b0; }
+.foot img { height: 22px; width: auto; display: block; }
+.foot .convx { height: 18px; }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div>
+      <a class="brandmark" href="https://stackedstore.com" target="_blank" rel="noopener"><img src="assets/stacked-logo.png" alt="Stacked Store"></a>
+      <h1 class="title">Inventory, sales and search</h1>
+    </div>
+    <div class="asof"><b id="asof">Loading data</b><span id="windows"></span></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="views" role="tablist" aria-label="View" id="views">
+    <button role="tab" type="button" data-view="products" aria-selected="true">Products</button>
+    <button role="tab" type="button" data-view="search" aria-selected="false">Site search</button>
+  </nav>
+</div>
+
+<div class="wrap" id="view-products">
+  <section class="tiles" aria-label="Catalogue summary">
+    <div class="tile"><span class="num" id="t-all">–</span><span class="lab">Active products</span><span class="sub" id="t-all-sub">&nbsp;</span></div>
+    <button class="tile in" type="button" data-preset="in"><span class="num" id="t-in">–</span><span class="lab">In stock</span><span class="sub" id="t-in-sub">&nbsp;</span></button>
+    <button class="tile out" type="button" data-preset="out"><span class="num" id="t-out">–</span><span class="lab">Out of stock</span><span class="sub" id="t-out-sub">&nbsp;</span></button>
+    <button class="tile out" type="button" data-preset="restock"><span class="num" id="t-restock">–</span><span class="lab">Out of stock, sold in last 30 days</span><span class="sub">Show these</span></button>
+  </section>
+
+  <div class="main">
+    <aside class="rail" id="rail" aria-label="Filters">
+      <div class="rail-head">
+        <h2>Filter</h2>
+        <button class="btn rail-close" type="button" id="rail-close">Show results</button>
+      </div>
+
+      <div class="fgroup">
+        <label class="flabel" for="q">Search products</label>
+        <input class="field" id="q" type="search" placeholder="Title, brand or type" autocomplete="off">
+      </div>
+
+      <div class="fgroup">
+        <span class="flabel">Brand</span>
+        <input class="field" id="brand-q" type="search" placeholder="Find a brand" autocomplete="off" aria-label="Find a brand">
+        <div class="brands" id="brands" role="group" aria-label="Brands"></div>
+        <button class="linkbtn" type="button" id="brand-clear" hidden>Clear brands</button>
+      </div>
+
+      <div class="fgroup">
+        <span class="flabel">Price (SGD)</span>
+        <div class="range">
+          <input class="field" id="p-min" type="number" min="0" inputmode="decimal" placeholder="Min" aria-label="Minimum price">
+          <span>to</span>
+          <input class="field" id="p-max" type="number" min="0" inputmode="decimal" placeholder="Max" aria-label="Maximum price">
+        </div>
+      </div>
+
+      <div class="fgroup">
+        <span class="flabel">Count units sold from</span>
+        <div class="seg" role="group" aria-label="Sales channel for unit filters">
+          <button type="button" id="ch-all" aria-pressed="true">All channels</button>
+          <button type="button" id="ch-online" aria-pressed="false">Online Store</button>
+        </div>
+        <span class="fhint">All channels includes both shops (POS).</span>
+      </div>
+
+      <div class="fgroup">
+        <span class="flabel">Units sold, last 30 days</span>
+        <div class="range">
+          <input class="field" id="u30-min" type="number" inputmode="numeric" placeholder="Min" aria-label="Minimum units sold in 30 days">
+          <span>to</span>
+          <input class="field" id="u30-max" type="number" inputmode="numeric" placeholder="Max" aria-label="Maximum units sold in 30 days">
+        </div>
+      </div>
+
+      <div class="fgroup">
+        <span class="flabel">Units sold, last 12 months</span>
+        <div class="range">
+          <input class="field" id="u12-min" type="number" inputmode="numeric" placeholder="Min" aria-label="Minimum units sold in 12 months">
+          <span>to</span>
+          <input class="field" id="u12-max" type="number" inputmode="numeric" placeholder="Max" aria-label="Maximum units sold in 12 months">
+        </div>
+      </div>
+
+      <button class="btn" type="button" id="reset">Reset filters</button>
+    </aside>
+
+    <section class="results" aria-label="Products">
+      <div class="bar">
+        <div class="tabs" role="tablist" id="tabs">
+          <button role="tab" type="button" data-tab="in_stock" aria-selected="true">In stock <span class="c" id="c-in_stock"></span></button>
+          <button role="tab" type="button" data-tab="out_of_stock" aria-selected="false">Out of stock <span class="c" id="c-out_of_stock"></span></button>
+          <button role="tab" type="button" data-tab="not_tracked" aria-selected="false">Not tracked <span class="c" id="c-not_tracked"></span></button>
+          <button role="tab" type="button" data-tab="all" aria-selected="false">All <span class="c" id="c-all"></span></button>
+        </div>
+        <div class="actions">
+          <span class="export-msg" id="export-msg" role="status"></span>
+          <button class="btn solid" type="button" id="export" hidden>Export CSV</button>
+          <button class="btn filter-toggle" type="button" id="rail-open">Filters <span id="fcount"></span></button>
+        </div>
+      </div>
+      <div class="chips" id="chips"></div>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th colspan="5"></th>
+              <th class="grp num" colspan="2">Units sold, 30 days</th>
+              <th class="grp num" colspan="2">Units sold, 12 months</th>
+            </tr>
+            <tr id="head"></tr>
+          </thead>
+          <tbody id="rows"><tr><td colspan="9" class="loading">Loading products</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <span class="count" id="range"></span>
+        <div class="btns">
+          <button class="btn" type="button" id="prev">Previous</button>
+          <button class="btn" type="button" id="next">Next</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="wrap" id="view-search" hidden>
+  <section class="tiles" aria-label="Site search summary">
+    <div class="tile"><span class="num" id="s-visits">–</span><span class="lab">Search visits</span><span class="sub" id="s-visits-sub">&nbsp;</span></div>
+    <div class="tile"><span class="num" id="s-terms">–</span><span class="lab">Terms searched</span><span class="sub" id="s-terms-sub">&nbsp;</span></div>
+    <div class="tile"><span class="num" id="s-opens">–</span><span class="lab">Product opens from search</span><span class="sub" id="s-opens-sub">&nbsp;</span></div>
+    <button class="tile out" type="button" id="s-oos-tile"><span class="num" id="s-oos">–</span><span class="lab">Searches where the most-opened product is out of stock</span><span class="sub" id="s-oos-sub">Show these</span></button>
+  </section>
+
+  <div class="main">
+    <aside class="rail" id="s-rail" aria-label="Search filters">
+      <div class="rail-head">
+        <h2>Filter</h2>
+        <button class="btn rail-close" type="button" id="s-rail-close">Show results</button>
+      </div>
+
+      <div class="fgroup">
+        <label class="flabel" for="s-q">Find a term</label>
+        <input class="field" id="s-q" type="search" placeholder="e.g. lamp" autocomplete="off">
+      </div>
+
+      <div class="fgroup">
+        <span class="flabel">Searches, last 30 days</span>
+        <div class="range">
+          <input class="field" id="s-min" type="number" min="0" inputmode="numeric" placeholder="Min" aria-label="Minimum searches">
+          <span>to</span>
+          <input class="field" id="s-max" type="number" min="0" inputmode="numeric" placeholder="Max" aria-label="Maximum searches">
+        </div>
+      </div>
+
+      <div class="fgroup">
+        <label class="chk" for="s-oosonly"><input type="checkbox" id="s-oosonly"><span>Most-opened product is out of stock</span></label>
+      </div>
+
+      <button class="btn" type="button" id="s-reset">Reset filters</button>
+    </aside>
+
+    <section class="results" aria-label="Search terms">
+      <div class="bar">
+        <span class="count" id="s-count"></span>
+        <div class="actions">
+          <span class="export-msg" id="s-export-msg" role="status"></span>
+          <button class="btn solid" type="button" id="s-export" hidden>Export CSV</button>
+          <button class="btn filter-toggle" type="button" id="s-rail-open">Filters <span id="s-fcount"></span></button>
+        </div>
+      </div>
+
+      <div class="tablewrap">
+        <table class="stable">
+          <thead><tr id="s-head"></tr></thead>
+          <tbody id="s-rows"><tr><td colspan="5" class="loading">Loading search terms</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <span class="count" id="s-range"></span>
+        <div class="btns">
+          <button class="btn" type="button" id="s-prev">Previous</button>
+          <button class="btn" type="button" id="s-next">Next</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<section class="notes">
+  <div class="wrap">
+    <ul id="s-notes" hidden>
+      <li>Site search is the search box on stackedstore.com. Figures are visits (GA4 sessions) in the same 30 days as the Products tab, with visits from China left out.</li>
+      <li>Searches count visits that loaded the results page for a term. A visit that searched three terms counts once per term.</li>
+      <li>Product opens count visits that opened a product from the term, either from the results page or from the search dropdown. Text typed into the dropdown appears as its own term, which is why some terms show opens but no searches.</li>
+      <li>Basket adds count visits that added to basket from a product opened through search, or straight from the results page.</li>
+      <li>Stock is today's stock from the Products tab. A product marked No longer listed has been archived since.</li>
+    </ul>
+    <ul id="notes">
+      <li>Stock is the total across all locations, including both shops. Products that do not track inventory are listed under Not tracked.</li>
+      <li>Units sold are net of returns. Online Store counts the website only; All channels adds the shops (POS), the Shop app and draft orders.</li>
+      <li>Price is the lowest variant price. A struck-through price is the compare-at price.</li>
+    </ul>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="by">
+      <small>Prepared by</small>
+      <img src="assets/z21-logo-white.png" alt="Z21 Studio">
+      <img class="convx" src="assets/convx-logo.png" alt="Convx">
+    </div>
+    <small id="foot-asof"></small>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  // Data is inlined by build.py on the hosted page; the claude.ai copy fetches the files beside it.
+  const loadJson = (id, url) => {
+    const el = document.getElementById(id);
+    if (el) return Promise.resolve().then(() => JSON.parse(el.textContent));
+    return fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  };
+  const fmt = new Intl.NumberFormat("en-SG");
+  const money = new Intl.NumberFormat("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const PAGE = 100;
+  const COLS = [
+    { key: "title", label: "Product", num: false },
+    { key: "status", label: "Status", num: false },
+    { key: "price_min", label: "Price", num: true },
+    { key: "stock", label: "Stock", num: true },
+    { key: "created", label: "Added", num: false },
+    { key: "30d_all", label: "All", num: true },
+    { key: "30d_online", label: "Online", num: true },
+    { key: "12m_all", label: "All", num: true },
+    { key: "12m_online", label: "Online", num: true },
+  ];
+  const TAB_LABEL = { in_stock: "In stock", out_of_stock: "Out of stock", not_tracked: "Not tracked" };
+
+  let products = [], domain = "stackedstore.com", lastRows = [], pulledAt = "", downloads = null;
+  const state = {
+    tab: "in_stock", q: "", brands: new Set(), brandQ: "",
+    pMin: null, pMax: null, ch: "all",
+    u30Min: null, u30Max: null, u12Min: null, u12Max: null,
+    sort: "30d_all", dir: -1, page: 0,
+  };
+
+  const num = (v) => { if (v === "" || v === null || v === undefined) return null; const n = Number(v); return Number.isFinite(n) ? n : null; };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function passes(p, skipTab, skipBrand) {
+    if (!skipTab && state.tab !== "all" && p.status !== state.tab) return false;
+    if (!skipBrand && state.brands.size && !state.brands.has(p.brand)) return false;
+    if (state.q && !p._search.includes(state.q)) return false;
+    if (state.pMin !== null && p.price_min < state.pMin) return false;
+    if (state.pMax !== null && p.price_min > state.pMax) return false;
+    const u30 = p["30d_" + state.ch], u12 = p["12m_" + state.ch];
+    if (state.u30Min !== null && u30 < state.u30Min) return false;
+    if (state.u30Max !== null && u30 > state.u30Max) return false;
+    if (state.u12Min !== null && u12 < state.u12Min) return false;
+    if (state.u12Max !== null && u12 > state.u12Max) return false;
+    return true;
+  }
+
+  function compare(a, b) {
+    const k = state.sort;
+    let x = a[k], y = b[k];
+    if (k === "title") { x = a._t; y = b._t; }
+    if (x === null || x === undefined) x = -Infinity;
+    if (y === null || y === undefined) y = -Infinity;
+    if (x < y) return -1 * state.dir;
+    if (x > y) return 1 * state.dir;
+    return a._t < b._t ? -1 : a._t > b._t ? 1 : 0;
+  }
+
+  function renderHead() {
+    $("head").innerHTML = COLS.map((c) => {
+      const active = state.sort === c.key;
+      const arr = active ? (state.dir === 1 ? "↑" : "↓") : "";
+      const aria = active ? (state.dir === 1 ? "ascending" : "descending") : "none";
+      return `<th class="${c.num ? "num" : ""}" aria-sort="${aria}"><button type="button" data-sort="${c.key}">${c.label}<span class="arr">${arr}</span></button></th>`;
+    }).join("");
+  }
+
+  function renderBrands() {
+    const counts = new Map();
+    for (const p of products) if (passes(p, false, true)) counts.set(p.brand, (counts.get(p.brand) || 0) + 1);
+    const q = state.brandQ;
+    const list = [...new Set(products.map((p) => p.brand))]
+      .filter((b) => !q || b.toLowerCase().includes(q))
+      .sort((a, b) => (state.brands.has(b) - state.brands.has(a)) || ((counts.get(b) || 0) - (counts.get(a) || 0)) || a.localeCompare(b));
+    $("brands").innerHTML = list.length ? list.map((b, i) => {
+      const id = "b-" + i;
+      return `<label for="${id}"><input type="checkbox" id="${id}" value="${esc(b)}" ${state.brands.has(b) ? "checked" : ""}><span class="bn">${esc(b || "No brand")}</span><span class="bc">${fmt.format(counts.get(b) || 0)}</span></label>`;
+    }).join("") : `<div class="empty" style="padding:.75rem">No brand matches</div>`;
+    $("brand-clear").hidden = state.brands.size === 0;
+  }
+
+  function renderChips() {
+    const chips = [];
+    if (state.q) chips.push(["q", `Search: <span>${esc(state.q)}</span>`]);
+    for (const b of state.brands) chips.push(["brand:" + b, `Brand: <span>${esc(b || "No brand")}</span>`]);
+    const r = (lo, hi, unit) => lo !== null && hi !== null ? `${unit}${fmt.format(lo)} to ${unit}${fmt.format(hi)}` : lo !== null ? `${unit}${fmt.format(lo)} or more` : `up to ${unit}${fmt.format(hi)}`;
+    if (state.pMin !== null || state.pMax !== null) chips.push(["price", `Price: <span>${r(state.pMin, state.pMax, "$")}</span>`]);
+    const chl = state.ch === "online" ? " online" : "";
+    if (state.u30Min !== null || state.u30Max !== null) chips.push(["u30", `30 days${chl}: <span>${r(state.u30Min, state.u30Max, "")} units</span>`]);
+    if (state.u12Min !== null || state.u12Max !== null) chips.push(["u12", `12 months${chl}: <span>${r(state.u12Min, state.u12Max, "")} units</span>`]);
+    $("chips").innerHTML = chips.map(([k, h]) => `<button type="button" class="chip" data-chip="${esc(k)}" aria-label="Remove filter">${h} ✕</button>`).join("");
+    $("fcount").textContent = chips.length ? `(${chips.length})` : "";
+  }
+
+  function render() {
+    const base = products.filter((p) => passes(p, true, false));
+    const counts = { in_stock: 0, out_of_stock: 0, not_tracked: 0 };
+    for (const p of base) counts[p.status]++;
+    for (const k in counts) $("c-" + k).textContent = fmt.format(counts[k]);
+    $("c-all").textContent = fmt.format(base.length);
+
+    const rows = state.tab === "all" ? base : base.filter((p) => p.status === state.tab);
+    rows.sort(compare);
+    lastRows = rows;
+    $("export").textContent = `Export CSV (${fmt.format(rows.length)})`;
+    $("export").disabled = rows.length === 0;
+    $("export-msg").textContent = "";
+    const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+    state.page = Math.min(state.page, pages - 1);
+    const start = state.page * PAGE, slice = rows.slice(start, start + PAGE);
+
+    const ch = state.ch;
+    $("rows").innerHTML = slice.length ? slice.map((p) => {
+      const price = p.price_min === p.price_max ? `$${money.format(p.price_min)}` : `$${money.format(p.price_min)}+`;
+      const was = p.compare_at && p.compare_at > p.price_min ? `<span class="was">$${money.format(p.compare_at)}</span>` : "";
+      const stock = p.stock === null ? "–" : fmt.format(p.stock);
+      const u = (k) => `<td class="num ${p[k] === 0 ? "zero" : ""} ${k.endsWith("_" + ch) ? "active-ch" : ""}">${fmt.format(p[k])}</td>`;
+      const meta = [p.brand, p.type, p.variants > 1 ? `${p.variants} variants` : ""].filter(Boolean).map(esc).join(" · ");
+      return `<tr>
+        <td class="prod"><a href="https://${domain}/products/${encodeURIComponent(p.handle)}" target="_blank" rel="noopener">${esc(p.title)}</a><div class="meta">${meta}</div></td>
+        <td><span class="pill ${p.status}">${TAB_LABEL[p.status]}</span></td>
+        <td class="num">${price}${was}</td>
+        <td class="num stock ${p.stock !== null && p.stock < 0 ? "neg" : ""}">${stock}</td>
+        <td class="date">${p.created}</td>
+        ${u("30d_all")}${u("30d_online")}${u("12m_all")}${u("12m_online")}
+      </tr>`;
+    }).join("") : `<tr><td colspan="9" class="empty">No products match these filters. Remove a filter above or reset.</td></tr>`;
+
+    $("range").textContent = rows.length ? `Showing ${fmt.format(start + 1)} to ${fmt.format(start + slice.length)} of ${fmt.format(rows.length)}` : "";
+    $("prev").disabled = state.page === 0;
+    $("next").disabled = state.page >= pages - 1;
+    renderHead();
+    renderBrands();
+    renderChips();
+    saveView();
+  }
+
+  // Per-viewer convenience only: remember the open tab and sort.
+  function saveView() { try { localStorage.setItem("ss-inv-view", JSON.stringify({ tab: state.tab, sort: state.sort, dir: state.dir })); } catch (e) {} }
+  function loadView() { try { const v = JSON.parse(localStorage.getItem("ss-inv-view") || "null"); if (v) Object.assign(state, v); } catch (e) {} }
+
+  function syncInputs() {
+    $("q").value = state.q; $("brand-q").value = state.brandQ;
+    $("p-min").value = state.pMin ?? ""; $("p-max").value = state.pMax ?? "";
+    $("u30-min").value = state.u30Min ?? ""; $("u30-max").value = state.u30Max ?? "";
+    $("u12-min").value = state.u12Min ?? ""; $("u12-max").value = state.u12Max ?? "";
+    $("ch-all").setAttribute("aria-pressed", state.ch === "all");
+    $("ch-online").setAttribute("aria-pressed", state.ch === "online");
+    document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === state.tab));
+  }
+
+  function resetFilters() {
+    Object.assign(state, { q: "", brandQ: "", pMin: null, pMax: null, ch: "all", u30Min: null, u30Max: null, u12Min: null, u12Max: null, page: 0 });
+    state.brands.clear();
+  }
+
+  // Events
+  let t;
+  const debounced = (fn) => { clearTimeout(t); t = setTimeout(fn, 150); };
+  $("q").addEventListener("input", (e) => debounced(() => { state.q = e.target.value.trim().toLowerCase(); state.page = 0; render(); }));
+  $("brand-q").addEventListener("input", (e) => { state.brandQ = e.target.value.trim().toLowerCase(); renderBrands(); });
+  $("brands").addEventListener("change", (e) => {
+    const v = e.target.value; e.target.checked ? state.brands.add(v) : state.brands.delete(v);
+    state.page = 0; render();
+  });
+  $("brand-clear").addEventListener("click", () => { state.brands.clear(); state.page = 0; render(); });
+  const bindNum = (id, key) => $(id).addEventListener("input", (e) => debounced(() => { state[key] = num(e.target.value); state.page = 0; render(); }));
+  bindNum("p-min", "pMin"); bindNum("p-max", "pMax");
+  bindNum("u30-min", "u30Min"); bindNum("u30-max", "u30Max");
+  bindNum("u12-min", "u12Min"); bindNum("u12-max", "u12Max");
+  ["all", "online"].forEach((c) => $("ch-" + c).addEventListener("click", () => { state.ch = c; state.page = 0; syncInputs(); render(); }));
+  $("tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-tab]"); if (!b) return;
+    state.tab = b.dataset.tab; state.page = 0; syncInputs(); render();
+  });
+  $("head").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-sort]"); if (!b) return;
+    const k = b.dataset.sort;
+    if (state.sort === k) state.dir *= -1; else { state.sort = k; state.dir = (k === "title" || k === "status") ? 1 : -1; }
+    state.page = 0; render();
+  });
+  $("chips").addEventListener("click", (e) => {
+    const c = e.target.closest("[data-chip]"); if (!c) return;
+    const k = c.dataset.chip;
+    if (k === "q") state.q = "";
+    else if (k.startsWith("brand:")) state.brands.delete(k.slice(6));
+    else if (k === "price") { state.pMin = state.pMax = null; }
+    else if (k === "u30") { state.u30Min = state.u30Max = null; }
+    else if (k === "u12") { state.u12Min = state.u12Max = null; }
+    state.page = 0; syncInputs(); render();
+  });
+  $("reset").addEventListener("click", () => { resetFilters(); syncInputs(); render(); });
+  $("prev").addEventListener("click", () => { state.page--; render(); document.querySelector(".results").scrollIntoView({ block: "start" }); });
+  $("next").addEventListener("click", () => { state.page++; render(); document.querySelector(".results").scrollIntoView({ block: "start" }); });
+  $("rail-open").addEventListener("click", () => $("rail").classList.add("open"));
+  $("rail-close").addEventListener("click", () => $("rail").classList.remove("open"));
+  document.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => {
+    resetFilters();
+    const p = b.dataset.preset;
+    if (p === "in") { state.tab = "in_stock"; }
+    if (p === "out") { state.tab = "out_of_stock"; }
+    if (p === "restock") { state.tab = "out_of_stock"; state.u30Min = 1; state.sort = "30d_all"; state.dir = -1; }
+    syncInputs(); render();
+    document.querySelector(".results").scrollIntoView({ block: "start", behavior: "smooth" });
+  }));
+
+  // Export: the current tab, filters and sort, every page.
+  const csvCell = (v) => {
+    if (v === null || v === undefined) return "";
+    const s = String(v);
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  function buildCsv(rows) {
+    const head = ["Product ID", "Product", "Brand", "Type", "Status", "Price (SGD)", "Highest variant price (SGD)", "Compare-at price (SGD)",
+      "Stock", "Variants", "Added", "Units 30 days, all channels", "Units 30 days, online", "Units 12 months, all channels", "Units 12 months, online", "URL"];
+    const lines = [head.map(csvCell).join(",")];
+    for (const p of rows) {
+      lines.push([p.id, p.title, p.brand, p.type, TAB_LABEL[p.status], p.price_min, p.price_max, p.compare_at, p.stock, p.variants, p.created,
+        p["30d_all"], p["30d_online"], p["12m_all"], p["12m_online"], `https://${domain}/products/${p.handle}`].map(csvCell).join(","));
+    }
+    return "﻿" + lines.join("\r\n");
+  }
+  async function offerCsv(btnId, msgId, filename, csv, n) {
+    if (!downloads || !n) return;
+    $(btnId).disabled = true;
+    try {
+      await downloads.save({ filename, data: csv });
+      $(msgId).textContent = `Saved ${fmt.format(n)} rows`;
+    } catch (e) {
+      const code = e && e.code;
+      if (code === "declined") $(msgId).textContent = "";
+      else if (code === "rate_limited") $(msgId).textContent = "A save is already open. Finish it, then try again.";
+      else { $(msgId).textContent = "Export is not available in this view."; $(btnId).hidden = true; }
+    } finally {
+      $(btnId).disabled = false;
+    }
+  }
+  $("export").addEventListener("click", () => {
+    const tab = state.tab === "all" ? "all" : state.tab.replace(/_/g, "-");
+    const filtered = $("chips").children.length ? "-filtered" : "";
+    offerCsv("export", "export-msg", `stacked-store-inventory-${tab}${filtered}-${pulledAt.slice(0, 10)}.csv`, buildCsv(lastRows), lastRows.length);
+  });
+  const showExport = (d) => { downloads = d; $("export").hidden = !d; $("s-export").hidden = !d; };
+  if (typeof window.claude?.use === "function") {
+    window.claude.use("downloads").then(showExport).catch(() => {});
+  } else {
+    // Hosted outside claude.ai: a plain browser download.
+    showExport({ save: ({ filename, data }) => {
+      const url = URL.createObjectURL(new Blob([data], { type: "text/csv;charset=utf-8" }));
+      const a = Object.assign(document.createElement("a"), { href: url, download: filename });
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return Promise.resolve({ status: "saved" });
+    } });
+  }
+
+  // ---------- Site search ----------
+  const S_COLS = [
+    { key: "term", label: "Search term", num: false },
+    { key: "searches", label: "Searches", num: true },
+    { key: "opens", label: "Product opens", num: true },
+    { key: "adds", label: "Basket adds", num: true },
+    { key: null, label: "Products opened", num: false },
+  ];
+  let terms = [], byHandle = new Map(), sLast = [], searchPulledAt = "";
+  const ss = { q: "", min: null, max: null, oosOnly: false, sort: "searches", dir: -1, page: 0 };
+
+  function sPasses(t) {
+    if (ss.q && !t.term.includes(ss.q)) return false;
+    if (ss.min !== null && t.searches < ss.min) return false;
+    if (ss.max !== null && t.searches > ss.max) return false;
+    if (ss.oosOnly && t._top !== "out_of_stock") return false;
+    return true;
+  }
+
+  function sCompare(a, b) {
+    const k = ss.sort, x = a[k], y = b[k];
+    if (x < y) return -1 * ss.dir;
+    if (x > y) return 1 * ss.dir;
+    return b.searches - a.searches || (a.term < b.term ? -1 : a.term > b.term ? 1 : 0);
+  }
+
+  function renderSearchHead() {
+    $("s-head").innerHTML = S_COLS.map((c) => {
+      if (!c.key) return `<th>${c.label}</th>`;
+      const active = ss.sort === c.key;
+      const arr = active ? (ss.dir === 1 ? "↑" : "↓") : "";
+      const aria = active ? (ss.dir === 1 ? "ascending" : "descending") : "none";
+      return `<th class="${c.num ? "num" : ""}" aria-sort="${aria}"><button type="button" data-ssort="${c.key}">${c.label}<span class="arr">${arr}</span></button></th>`;
+    }).join("");
+  }
+
+  function openedCell(t) {
+    if (!t.products.length) return `<span class="facts">No product opened</span>`;
+    return `<ul class="opened-list">` + t.products.slice(0, 3).map((o) => {
+      const p = byHandle.get(o.handle);
+      if (!p) return `<li><span class="gone">${esc(o.handle)}</span><span class="facts">No longer listed · ${fmt.format(o.opens)} opens</span></li>`;
+      const stock = p.stock === null ? "" : ` · stock ${fmt.format(p.stock)}`;
+      return `<li><a href="https://${domain}/products/${encodeURIComponent(p.handle)}" target="_blank" rel="noopener">${esc(p.title)}</a>` +
+        `<span class="pill ${p.status}">${TAB_LABEL[p.status]}</span><span class="facts">${fmt.format(o.opens)} opens${stock}</span></li>`;
+    }).join("") + `</ul>`;
+  }
+
+  function renderSearch() {
+    const rows = terms.filter(sPasses).sort(sCompare);
+    sLast = rows;
+    const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+    ss.page = Math.min(ss.page, pages - 1);
+    const start = ss.page * PAGE, slice = rows.slice(start, start + PAGE);
+    const n0 = (v) => `<td class="num ${v === 0 ? "zero" : ""}">${fmt.format(v)}</td>`;
+    $("s-rows").innerHTML = slice.length ? slice.map((t) =>
+      `<tr><td class="term">${esc(t.term)}</td>${n0(t.searches)}${n0(t.opens)}${n0(t.adds)}<td class="opened">${openedCell(t)}</td></tr>`
+    ).join("") : `<tr><td colspan="5" class="empty">No search terms match these filters. Change a filter or reset.</td></tr>`;
+    $("s-count").textContent = `${fmt.format(rows.length)} terms`;
+    $("s-range").textContent = rows.length ? `Showing ${fmt.format(start + 1)} to ${fmt.format(start + slice.length)} of ${fmt.format(rows.length)}` : "";
+    $("s-prev").disabled = ss.page === 0;
+    $("s-next").disabled = ss.page >= pages - 1;
+    $("s-export").textContent = `Export CSV (${fmt.format(rows.length)})`;
+    $("s-export").disabled = rows.length === 0;
+    $("s-export-msg").textContent = "";
+    const nf = [ss.q, ss.min !== null || ss.max !== null, ss.oosOnly].filter(Boolean).length;
+    $("s-fcount").textContent = nf ? `(${nf})` : "";
+    renderSearchHead();
+  }
+
+  function syncSearchInputs() {
+    $("s-q").value = ss.q;
+    $("s-min").value = ss.min ?? ""; $("s-max").value = ss.max ?? "";
+    $("s-oosonly").checked = ss.oosOnly;
+  }
+
+  function searchCsv(rows) {
+    const head = ["Search term", "Searches", "Product opens", "Opens from results page", "Opens from dropdown", "Basket adds"];
+    for (let i = 1; i <= 3; i++) head.push(`Product ${i}`, `Product ${i} status`, `Product ${i} stock`, `Product ${i} opens`, `Product ${i} URL`);
+    const lines = [head.map(csvCell).join(",")];
+    for (const t of rows) {
+      const cells = [t.term, t.searches, t.opens, t.opens_results, t.opens_dropdown, t.adds];
+      for (let i = 0; i < 3; i++) {
+        const o = t.products[i], p = o && byHandle.get(o.handle);
+        cells.push(o ? (p ? p.title : o.handle) : "", o ? (p ? TAB_LABEL[p.status] : "No longer listed") : "",
+          p ? p.stock : "", o ? o.opens : "", o ? `https://${domain}/products/${o.handle}` : "");
+      }
+      lines.push(cells.map(csvCell).join(","));
+    }
+    return "﻿" + lines.join("\r\n");
+  }
+
+  $("s-q").addEventListener("input", (e) => debounced(() => { ss.q = e.target.value.trim().toLowerCase(); ss.page = 0; renderSearch(); }));
+  [["s-min", "min"], ["s-max", "max"]].forEach(([id, key]) =>
+    $(id).addEventListener("input", (e) => debounced(() => { ss[key] = num(e.target.value); ss.page = 0; renderSearch(); })));
+  $("s-oosonly").addEventListener("change", (e) => { ss.oosOnly = e.target.checked; ss.page = 0; renderSearch(); });
+  $("s-reset").addEventListener("click", () => { Object.assign(ss, { q: "", min: null, max: null, oosOnly: false, page: 0 }); syncSearchInputs(); renderSearch(); });
+  $("s-head").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-ssort]"); if (!b) return;
+    const k = b.dataset.ssort;
+    if (ss.sort === k) ss.dir *= -1; else { ss.sort = k; ss.dir = k === "term" ? 1 : -1; }
+    ss.page = 0; renderSearch();
+  });
+  $("s-prev").addEventListener("click", () => { ss.page--; renderSearch(); $("view-search").querySelector(".results").scrollIntoView({ block: "start" }); });
+  $("s-next").addEventListener("click", () => { ss.page++; renderSearch(); $("view-search").querySelector(".results").scrollIntoView({ block: "start" }); });
+  $("s-rail-open").addEventListener("click", () => $("s-rail").classList.add("open"));
+  $("s-rail-close").addEventListener("click", () => $("s-rail").classList.remove("open"));
+  $("s-oos-tile").addEventListener("click", () => {
+    Object.assign(ss, { q: "", min: null, max: null, oosOnly: true, sort: "searches", dir: -1, page: 0 });
+    syncSearchInputs(); renderSearch();
+    $("view-search").querySelector(".results").scrollIntoView({ block: "start", behavior: "smooth" });
+  });
+  $("s-export").addEventListener("click", () => {
+    const filtered = (ss.q || ss.min !== null || ss.max !== null || ss.oosOnly) ? "-filtered" : "";
+    offerCsv("s-export", "s-export-msg", `stacked-store-site-search${filtered}-${searchPulledAt.slice(0, 10)}.csv`, searchCsv(sLast), sLast.length);
+  });
+
+  // ---------- View switch ----------
+  function setView(v) {
+    $("view-products").hidden = v !== "products";
+    $("view-search").hidden = v !== "search";
+    $("notes").hidden = v !== "products";
+    $("s-notes").hidden = v !== "search";
+    document.querySelectorAll("#views button").forEach((b) => b.setAttribute("aria-selected", b.dataset.view === v));
+    try { history.replaceState(null, "", "#" + v); } catch (e) {}
+  }
+  $("views").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (b) setView(b.dataset.view); });
+  setView(location.hash === "#search" ? "search" : "products");
+
+  // Load
+  const invLoaded = loadJson("data-inventory", "data/inventory.json").then((d) => {
+    domain = (d.shop && d.shop.domain) || domain;
+    pulledAt = d.pulled_at;
+    products = d.products.map((p) => Object.assign(p, {
+      _t: p.title.toLowerCase(),
+      _search: [p.title, p.brand, p.type].join(" ").toLowerCase(),
+    }));
+    const T = d.totals;
+    const when = new Date(d.pulled_at).toLocaleString("en-SG", { timeZone: "Asia/Singapore", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+    const day = (s) => new Date(s + "T00:00:00").toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" });
+    $("asof").textContent = `Data as of ${when} SGT`;
+    $("windows").textContent = `30 days: ${day(d.windows["30d"].since)} to ${day(d.windows["30d"].until)} · 12 months from ${day(d.windows["12m"].since)}`;
+    $("foot-asof").textContent = `Shopify data as of ${when} SGT`;
+    $("t-all").textContent = fmt.format(T.products);
+    $("t-all-sub").textContent = `${fmt.format(T.not_tracked)} do not track stock`;
+    $("t-in").textContent = fmt.format(T.in_stock);
+    $("t-in-sub").textContent = `${Math.round(T.in_stock / T.products * 100)}% of active products`;
+    $("t-out").textContent = fmt.format(T.out_of_stock);
+    $("t-out-sub").textContent = `${Math.round(T.out_of_stock / T.products * 100)}% of active products`;
+    $("t-restock").textContent = fmt.format(T.out_of_stock_sold_30d);
+    const lost = (k) => T.units_not_in_catalogue[k] + T.units_no_product[k];
+    const li = document.createElement("li");
+    li.textContent = `Store totals: ${fmt.format(T.units_store_total["30d_all"])} units sold in the last 30 days and ${fmt.format(T.units_store_total["12m_all"])} in the last 12 months. ` +
+      `${fmt.format(lost("30d_all"))} and ${fmt.format(lost("12m_all"))} of those are not in this table: they belong to products no longer listed, or to sales with no product attached (custom shop sales, gift cards).`;
+    $("notes").appendChild(li);
+    loadView(); syncInputs(); render();
+    return true;
+  }).catch(() => {
+    $("rows").innerHTML = `<tr><td colspan="9" class="empty">The product data did not load. Refresh the page; if it still fails, ask Convx to republish the data file.</td></tr>`;
+    $("asof").textContent = "Data unavailable";
+    return false;
+  });
+
+  loadJson("data-search", "data/search.json").then(async (d) => {
+    if (!(await invLoaded)) throw new Error("inventory");
+    searchPulledAt = d.pulled_at;
+    byHandle = new Map(products.map((p) => [p.handle, p]));
+    terms = d.terms.map((t) => {
+      const top = t.products[0] && byHandle.get(t.products[0].handle);
+      return Object.assign(t, { _top: top ? top.status : null });
+    });
+    const T = d.totals;
+    const oos = terms.filter((t) => t._top === "out_of_stock");
+    $("s-visits").textContent = fmt.format(T.search_sessions);
+    $("s-visits-sub").textContent = `${fmt.format(T.search_users)} visitors`;
+    $("s-terms").textContent = fmt.format(T.terms_searched);
+    $("s-terms-sub").textContent = `Plus ${fmt.format(terms.filter((t) => t.searches === 0).length)} typed in the dropdown only`;
+    $("s-opens").textContent = fmt.format(T.opens);
+    $("s-opens-sub").textContent = `${fmt.format(T.adds)} basket adds`;
+    $("s-oos").textContent = fmt.format(oos.reduce((n, t) => n + t.searches, 0));
+    $("s-oos-sub").textContent = `${fmt.format(oos.length)} terms · Show these`;
+    renderSearch();
+  }).catch(() => {
+    $("s-rows").innerHTML = `<tr><td colspan="5" class="empty">The search data did not load. Refresh the page; if it still fails, ask Convx to republish the data files.</td></tr>`;
+  });
+})();
+</script>

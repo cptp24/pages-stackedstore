@@ -1,0 +1,9 @@
+# Client data and credentials never enter git.
+.env
+*.json
+!package.json
+exports/
+build/
+dist/
+__pycache__/
+.DS_Store

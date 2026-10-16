@@ -1,0 +1,11 @@
+slug: stackedstore-my
+name: The Stacked Store
+site_domain: stackedstore.com
+
+shopify:
+  store: e115cd-21.myshopify.com
+  token_ref: SHOPIFY_STACKEDSTORE_MY_OFFLINE_TOKEN
+
+ga4:
+  property_id: "466356323"
+  subject: analytics@z21studio.com

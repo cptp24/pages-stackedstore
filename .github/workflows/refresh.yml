@@ -1,0 +1,81 @@
+name: Refresh client pages
+
+on:
+  schedule:
+    - cron: "0 23 * * *"   # 07:00 SGT every day
+  workflow_dispatch:        # "Run workflow" button for refreshes on request
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: pip install -r requirements.txt
+
+      - name: Write credentials
+        env:
+          SHOPIFY_STACKEDSTORE_MY_OFFLINE_TOKEN: ${{ secrets.SHOPIFY_STACKEDSTORE_MY_OFFLINE_TOKEN }}
+          GA4_SA_KEY_JSON: ${{ secrets.GA4_SA_KEY_JSON }}
+        run: |
+          umask 077
+          printf '%s' "$GA4_SA_KEY_JSON" > "$RUNNER_TEMP/ga4-sa.json"
+          {
+            echo "GA4_SA_KEY_PATH=$RUNNER_TEMP/ga4-sa.json"
+            echo "SHOPIFY_STACKEDSTORE_MY_OFFLINE_TOKEN=$SHOPIFY_STACKEDSTORE_MY_OFFLINE_TOKEN"
+          } > .env
+
+      # One step per client. A failure stops the run before deploy, so the live page keeps yesterday's data.
+      - name: Stacked Store
+        env:
+          STACKEDSTORE_PASSWORD: ${{ secrets.STACKEDSTORE_PASSWORD }}
+        run: ./build_site.sh stackedstore-my stackedstore
+
+      - name: Site root
+        run: cp public/* dist/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  # GitHub turns off schedules in a public repo after 60 days without commits.
+  # Re-enabling the workflow from inside a scheduled run is meant to keep the timer from running out.
+  keepalive:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/refresh.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}
