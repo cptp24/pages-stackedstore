@@ -3,6 +3,7 @@
 
   inventory  exports/shopify-inventory/<date>/inventory.json
   search     exports/ga4-site-search/<date>/site_search.json (top 5 products per term)
+  tree       sites/<site>/tree.json (tag to department and sub-category; swap it when the store's menu changes)
 
 Data and logos are inlined so the page is one file that staticrypt can encrypt whole.
 Refuses when the two 30-day windows differ, so both tabs always cover the same days.
@@ -44,6 +45,9 @@ def main():
     site = ROOT / "sites" / args.site
     inv_path, inv = latest(exports, "shopify-inventory", "inventory.json")
     sea_path, sea = latest(exports, "ga4-site-search", "site_search.json")
+    if not (site / "tree.json").exists():
+        raise SystemExit(f"No category map at {site / 'tree.json'}.")
+    tree = json.loads((site / "tree.json").read_text(encoding="utf-8"))
     if inv["windows"]["30d"] != sea["window"]:
         raise SystemExit(f"Windows differ: inventory {inv['windows']['30d']} vs search {sea['window']}. "
                          f"Re-run both pulls on the same day.")
@@ -62,7 +66,8 @@ def main():
     marker = "<script>\n(() => {"
     if html.count(marker) != 1:
         raise SystemExit("Page script marker not found exactly once.")
-    html = html.replace(marker, inline_json("data-inventory", inv) + inline_json("data-search", sea) + marker)
+    html = html.replace(marker, inline_json("data-inventory", inv) + inline_json("data-search", sea)
+                        + inline_json("data-tree", tree) + marker)
 
     out = ROOT / args.out / args.site / "index.html"
     out.parent.mkdir(parents=True, exist_ok=True)

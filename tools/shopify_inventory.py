@@ -31,7 +31,7 @@ from zoneinfo import ZoneInfo
 from shopify_common import (Snapshot, die, graphql, load_brand, load_env, money, resolve_shopify,
                             shop_info, write_json, write_manifest)
 
-TOOL_VERSION = "1.0.0"
+TOOL_VERSION = "1.1.0"
 PAGE_SIZE = 250
 ONLINE_CHANNEL = "Online Store"
 WINDOWS = {"30d": 30, "12m": 365}
@@ -41,11 +41,13 @@ query Products($first: Int!, $after: String) {
   products(first: $first, after: $after, query: "status:active") {
     pageInfo { hasNextPage endCursor }
     nodes {
-      legacyResourceId title handle vendor productType createdAt
+      legacyResourceId title handle vendor productType createdAt tags onlineStoreUrl
       totalInventory tracksInventory
       variantsCount { count }
       priceRangeV2 { minVariantPrice { amount } maxVariantPrice { amount } }
       compareAtPriceRange { maxVariantCompareAtPrice { amount } }
+      # Stacked Store's own switch for collection pages; null on stores without it.
+      showc: metafield(namespace: "custom", key: "show_in_collections") { value }
     }
   }
 }
@@ -123,6 +125,9 @@ def main():
             "brand": (p["vendor"] or "").strip(),
             "type": (p["productType"] or "").strip(),
             "created": p["createdAt"][:10],
+            "tags": p["tags"],
+            "on_online_store": bool(p["onlineStoreUrl"]),
+            "show_in_collections": (p["showc"] or {}).get("value"),
             "price_min": money(p["priceRangeV2"]["minVariantPrice"]["amount"]),
             "price_max": money(p["priceRangeV2"]["maxVariantPrice"]["amount"]),
             "compare_at": compare or None,
@@ -148,6 +153,9 @@ def main():
         "units": "ShopifyQL sales.net_items_sold (after returns) per product_id",
         "online": f"sales_channel = '{ONLINE_CHANNEL}' only",
         "windows": "inclusive, ending yesterday in the shop timezone",
+        "on_online_store": "true when the product is published to the Online Store (onlineStoreUrl set)",
+        "show_in_collections": "metafield custom.show_in_collections as stored; null when unset",
+        "tags": "Product.tags as stored",
     }
     data = {
         "pulled_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),

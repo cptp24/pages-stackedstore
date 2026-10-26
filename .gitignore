@@ -2,6 +2,8 @@
 .env
 *.json
 !package.json
+# Category map: collection handles and menu text only, both public on the storefront.
+!sites/*/tree.json
 exports/
 build/
 dist/

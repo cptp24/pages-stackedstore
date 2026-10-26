@@ -1,0 +1,352 @@
+{
+  "tree": "today",
+  "built_from": "19 October 2026",
+  "departments": [
+    {
+      "handle": "home-decor",
+      "label": "Home Decor",
+      "tags": [],
+      "subs": [
+        {
+          "handle": "scents-candle",
+          "label": "Scents & Candles",
+          "tags": [
+            "scents-candle"
+          ]
+        },
+        {
+          "handle": "incense-holders",
+          "label": "Incense Holders",
+          "tags": [
+            "incense-holders"
+          ]
+        },
+        {
+          "handle": "vases-pots",
+          "label": "Vases & Pots",
+          "tags": [
+            "vases-pots"
+          ]
+        },
+        {
+          "handle": "clocks",
+          "label": "Clocks",
+          "tags": [
+            "clocks"
+          ]
+        },
+        {
+          "handle": "objects",
+          "label": "Objects",
+          "tags": [
+            "objects"
+          ]
+        },
+        {
+          "handle": "posters",
+          "label": "Posters",
+          "tags": [
+            "posters"
+          ]
+        },
+        {
+          "handle": "books",
+          "label": "Books",
+          "tags": [
+            "books"
+          ]
+        },
+        {
+          "handle": "watering-cans",
+          "label": "Watering Cans",
+          "tags": [
+            "watering-cans"
+          ]
+        }
+      ]
+    },
+    {
+      "handle": "lighting",
+      "label": "Lighting",
+      "tags": [],
+      "subs": [
+        {
+          "handle": "table-lamps",
+          "label": "Table Lamps",
+          "tags": [
+            "table-lamps"
+          ]
+        },
+        {
+          "handle": "portable-lights",
+          "label": "Portable Lamps",
+          "tags": [
+            "portable-lights"
+          ]
+        },
+        {
+          "handle": "exterior-lighting",
+          "label": "Outdoor Lighting",
+          "tags": [
+            "exterior-lighting"
+          ]
+        },
+        {
+          "handle": "pendant-lamps",
+          "label": "Pendant Lamps",
+          "tags": [
+            "pendant-lamps"
+          ]
+        },
+        {
+          "handle": "wall-lamps",
+          "label": "Wall Lamps",
+          "tags": [
+            "wall-lamps"
+          ]
+        }
+      ]
+    },
+    {
+      "handle": "tableware",
+      "label": "Tableware",
+      "tags": [],
+      "subs": [
+        {
+          "handle": "drinkware",
+          "label": "Drinkware",
+          "tags": [
+            "drinkware"
+          ]
+        },
+        {
+          "handle": "dishware",
+          "label": "Dishware",
+          "tags": [
+            "dishware"
+          ]
+        },
+        {
+          "handle": "cutlery",
+          "label": "Cutlery",
+          "tags": [
+            "cutlery"
+          ]
+        },
+        {
+          "handle": "serving",
+          "label": "Serving",
+          "tags": [
+            "serving"
+          ]
+        },
+        {
+          "handle": "carafes-jugs",
+          "label": "Carafes & Jugs",
+          "tags": [
+            "carafes-jugs"
+          ]
+        },
+        {
+          "handle": "table-linen",
+          "label": "Table Linen",
+          "tags": [
+            "table-linen"
+          ]
+        },
+        {
+          "handle": "tea-coffee-pots",
+          "label": "Tea & Coffee Pots",
+          "tags": [
+            "tea-coffee-pots"
+          ]
+        },
+        {
+          "handle": "trays",
+          "label": "Trays",
+          "tags": [
+            "trays"
+          ]
+        }
+      ]
+    },
+    {
+      "handle": "textiles",
+      "label": "Textiles",
+      "tags": [],
+      "subs": [
+        {
+          "handle": "rugs-mats",
+          "label": "Rugs & Mats",
+          "tags": [
+            "rugs-mats"
+          ]
+        },
+        {
+          "handle": "cushions-covers",
+          "label": "Cushions & Covers",
+          "tags": [
+            "cushions-covers"
+          ]
+        },
+        {
+          "handle": "throws",
+          "label": "Throws",
+          "tags": [
+            "throws"
+          ]
+        },
+        {
+          "handle": "plushies",
+          "label": "Plushies",
+          "tags": [
+            "plushies"
+          ]
+        }
+      ]
+    },
+    {
+      "handle": "household",
+      "label": "Household",
+      "tags": [],
+      "subs": [
+        {
+          "handle": "bathroom-accessories",
+          "label": "Bathroom Accessories",
+          "tags": [
+            "bathroom-accessories"
+          ]
+        },
+        {
+          "handle": "bathroom-textiles",
+          "label": "Bathroom Textiles",
+          "tags": [
+            "bathroom-textiles"
+          ]
+        },
+        {
+          "handle": "body-care",
+          "label": "Body Care",
+          "tags": [
+            "body-care"
+          ]
+        },
+        {
+          "handle": "jars-boxes",
+          "label": "Jars & Boxes",
+          "tags": [
+            "jars-boxes"
+          ]
+        },
+        {
+          "handle": "kitchen-utensils",
+          "label": "Kitchen Utensils",
+          "tags": [
+            "kitchen-utensils"
+          ]
+        },
+        {
+          "handle": "kitchen-textiles",
+          "label": "Kitchen Textiles",
+          "tags": [
+            "kitchen-textiles"
+          ]
+        },
+        {
+          "handle": "laundry-baskets",
+          "label": "Laundry Baskets",
+          "tags": [
+            "laundry-baskets"
+          ]
+        },
+        {
+          "handle": "organizer",
+          "label": "Organisers",
+          "tags": [
+            "organizer"
+          ]
+        },
+        {
+          "handle": "storage-baskets",
+          "label": "Storage Containers & Bins",
+          "tags": [
+            "storage-baskets"
+          ]
+        }
+      ]
+    },
+    {
+      "handle": "furniture",
+      "label": "Furniture",
+      "tags": [],
+      "subs": [
+        {
+          "handle": "tables",
+          "label": "Tables",
+          "tags": [
+            "tables"
+          ]
+        },
+        {
+          "handle": "side-tables",
+          "label": "Side Tables",
+          "tags": [
+            "side-tables"
+          ]
+        },
+        {
+          "handle": "sofas",
+          "label": "Sofas",
+          "tags": [
+            "sofas"
+          ]
+        },
+        {
+          "handle": "stools",
+          "label": "Stools",
+          "tags": [
+            "stools"
+          ]
+        },
+        {
+          "handle": "chairs",
+          "label": "Chairs",
+          "tags": [
+            "chairs"
+          ]
+        },
+        {
+          "handle": "shelves",
+          "label": "Shelves",
+          "tags": [
+            "shelves"
+          ]
+        }
+      ]
+    },
+    {
+      "handle": "kids",
+      "label": "Kids",
+      "tags": [
+        "kids"
+      ],
+      "subs": []
+    },
+    {
+      "handle": "pets",
+      "label": "Pets",
+      "tags": [
+        "pets"
+      ],
+      "subs": []
+    },
+    {
+      "handle": "lifestyle",
+      "label": "Lifestyle",
+      "tags": [
+        "lifestyle"
+      ],
+      "subs": []
+    }
+  ]
+}

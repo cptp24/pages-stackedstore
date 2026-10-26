@@ -78,6 +78,10 @@ button.tile:hover .lab { text-decoration: underline; }
 .brands .bn { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .brands .bc { color: var(--muted); font-size: var(--s1); font-variant-numeric: tabular-nums; }
 .brands input { accent-color: var(--ink); margin: 0; }
+.brands.cats { max-height: 340px; }
+.cats .dept .bn { font-weight: 700; }
+.cats .sub { padding-left: 1.6rem; }
+.cats .none .bn { font-style: italic; }
 .linkbtn { background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; font-size: var(--s1); align-self: flex-start; }
 .btn { border: 1px solid var(--ink); background: var(--paper); padding: .625rem 1rem; cursor: pointer; text-transform: uppercase; letter-spacing: .06em; font-size: var(--s1); font-weight: 700; }
 .btn:hover { background: var(--ink); color: var(--paper); }
@@ -130,6 +134,9 @@ td.date { white-space: nowrap; }
 td.prod a { text-decoration: none; font-weight: 700; }
 td.prod a:hover { text-decoration: underline; }
 td.prod .meta { color: var(--muted); font-size: var(--s1); }
+td.prod .cat { color: var(--ink); }
+td.prod .cat.none { color: var(--muted); font-style: italic; }
+td.prod .flag { color: var(--out); font-size: var(--s1); }
 tr:hover td { background: var(--sand); }
 td.zero { color: #b4ada2; }
 td.active-ch { font-weight: 700; }
@@ -218,7 +225,19 @@ td.opened { min-width: 320px; }
 
       <div class="fgroup">
         <label class="flabel" for="q">Search products</label>
-        <input class="field" id="q" type="search" placeholder="Title, brand or type" autocomplete="off">
+        <input class="field" id="q" type="search" placeholder="Title, brand, type or tag" autocomplete="off">
+      </div>
+
+      <div class="fgroup">
+        <span class="flabel">Category</span>
+        <div class="brands cats" id="cats" role="group" aria-label="Categories"></div>
+        <button class="linkbtn" type="button" id="cat-clear" hidden>Clear categories</button>
+      </div>
+
+      <div class="fgroup">
+        <span class="flabel">On the website</span>
+        <label class="chk" for="hidden-only"><input type="checkbox" id="hidden-only"><span>In stock, missing from collection pages</span></label>
+        <span class="fhint">Not on the Online Store, or show_in_collections is off.</span>
       </div>
 
       <div class="fgroup">
@@ -385,6 +404,8 @@ td.opened { min-width: 320px; }
       <li>Stock is the total across all locations, including both shops. Products that do not track inventory are listed under Not tracked.</li>
       <li>Units sold are net of returns. Online Store counts the website only; All channels adds the shops (POS), the Shop app and draft orders.</li>
       <li>Price is the lowest variant price. A struck-through price is the compare-at price.</li>
+      <li>Category comes from each product's tags in Shopify, matched to the website's menu. A product can sit in more than one category. No category means none of its tags matches a menu category.</li>
+      <li>In stock, missing from collection pages: products in stock (or not tracking stock) that are not on the Online Store, or that have show_in_collections off.</li>
     </ul>
   </div>
 </section>
@@ -426,8 +447,9 @@ td.opened { min-width: 320px; }
   const TAB_LABEL = { in_stock: "In stock", out_of_stock: "Out of stock", not_tracked: "Not tracked" };
 
   let products = [], domain = "stackedstore.com", lastRows = [], pulledAt = "", downloads = null;
+  let tree = { departments: [] }, catLabel = new Map();
   const state = {
-    tab: "in_stock", q: "", brands: new Set(), brandQ: "",
+    tab: "in_stock", q: "", brands: new Set(), brandQ: "", cats: new Set(), hiddenOnly: false,
     pMin: null, pMax: null, ch: "all",
     u30Min: null, u30Max: null, u12Min: null, u12Max: null,
     sort: "30d_all", dir: -1, page: 0,
@@ -436,9 +458,11 @@ td.opened { min-width: 320px; }
   const num = (v) => { if (v === "" || v === null || v === undefined) return null; const n = Number(v); return Number.isFinite(n) ? n : null; };
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  function passes(p, skipTab, skipBrand) {
+  function passes(p, skipTab, skipBrand, skipCat) {
     if (!skipTab && state.tab !== "all" && p.status !== state.tab) return false;
     if (!skipBrand && state.brands.size && !state.brands.has(p.brand)) return false;
+    if (!skipCat && state.cats.size && !p._cats.some((k) => state.cats.has(k))) return false;
+    if (state.hiddenOnly && !p._hidden) return false;
     if (state.q && !p._search.includes(state.q)) return false;
     if (state.pMin !== null && p.price_min < state.pMin) return false;
     if (state.pMax !== null && p.price_min > state.pMax) return false;
@@ -484,9 +508,20 @@ td.opened { min-width: 320px; }
     $("brand-clear").hidden = state.brands.size === 0;
   }
 
+  function renderCats() {
+    const counts = new Map();
+    for (const p of products) if (passes(p, false, false, true)) for (const k of p._cats) counts.set(k, (counts.get(k) || 0) + 1);
+    const row = (key, label, cls) => `<label class="${cls}"><input type="checkbox" value="${esc(key)}" ${state.cats.has(key) ? "checked" : ""}><span class="bn">${esc(label)}</span><span class="bc">${fmt.format(counts.get(key) || 0)}</span></label>`;
+    $("cats").innerHTML = tree.departments.map((d) => row(d.handle, d.label, "dept") + d.subs.map((s) => row(d.handle + "/" + s.handle, s.label, "sub")).join("")).join("")
+      + row("none", "No category", "none");
+    $("cat-clear").hidden = state.cats.size === 0;
+  }
+
   function renderChips() {
     const chips = [];
     if (state.q) chips.push(["q", `Search: <span>${esc(state.q)}</span>`]);
+    for (const k of state.cats) chips.push(["cat:" + k, `Category: <span>${esc(catLabel.get(k) || k)}</span>`]);
+    if (state.hiddenOnly) chips.push(["hidden", "<span>In stock, missing from collection pages</span>"]);
     for (const b of state.brands) chips.push(["brand:" + b, `Brand: <span>${esc(b || "No brand")}</span>`]);
     const r = (lo, hi, unit) => lo !== null && hi !== null ? `${unit}${fmt.format(lo)} to ${unit}${fmt.format(hi)}` : lo !== null ? `${unit}${fmt.format(lo)} or more` : `up to ${unit}${fmt.format(hi)}`;
     if (state.pMin !== null || state.pMax !== null) chips.push(["price", `Price: <span>${r(state.pMin, state.pMax, "$")}</span>`]);
@@ -521,8 +556,12 @@ td.opened { min-width: 320px; }
       const stock = p.stock === null ? "–" : fmt.format(p.stock);
       const u = (k) => `<td class="num ${p[k] === 0 ? "zero" : ""} ${k.endsWith("_" + ch) ? "active-ch" : ""}">${fmt.format(p[k])}</td>`;
       const meta = [p.brand, p.type, p.variants > 1 ? `${p.variants} variants` : ""].filter(Boolean).map(esc).join(" · ");
+      const byDept = new Map();
+      for (const x of p._places) byDept.set(x.d, [...(byDept.get(x.d) || []), ...(x.s ? [x.s] : [])]);
+      const cat = byDept.size ? `<div class="meta cat">${[...byDept].map(([d, subs]) => esc(subs.length ? `${d} › ${subs.join(", ")}` : d)).join(" · ")}</div>` : `<div class="meta cat none">No category</div>`;
+      const flag = p._hidden ? `<div class="flag">${p.on_online_store ? "Hidden from collection pages" : "Not on the Online Store"}</div>` : "";
       return `<tr>
-        <td class="prod"><a href="https://${domain}/products/${encodeURIComponent(p.handle)}" target="_blank" rel="noopener">${esc(p.title)}</a><div class="meta">${meta}</div></td>
+        <td class="prod"><a href="https://${domain}/products/${encodeURIComponent(p.handle)}" target="_blank" rel="noopener">${esc(p.title)}</a><div class="meta">${meta}</div>${cat}${flag}</td>
         <td><span class="pill ${p.status}">${TAB_LABEL[p.status]}</span></td>
         <td class="num">${price}${was}</td>
         <td class="num stock ${p.stock !== null && p.stock < 0 ? "neg" : ""}">${stock}</td>
@@ -536,6 +575,7 @@ td.opened { min-width: 320px; }
     $("next").disabled = state.page >= pages - 1;
     renderHead();
     renderBrands();
+    renderCats();
     renderChips();
     saveView();
   }
@@ -549,14 +589,16 @@ td.opened { min-width: 320px; }
     $("p-min").value = state.pMin ?? ""; $("p-max").value = state.pMax ?? "";
     $("u30-min").value = state.u30Min ?? ""; $("u30-max").value = state.u30Max ?? "";
     $("u12-min").value = state.u12Min ?? ""; $("u12-max").value = state.u12Max ?? "";
+    $("hidden-only").checked = state.hiddenOnly;
     $("ch-all").setAttribute("aria-pressed", state.ch === "all");
     $("ch-online").setAttribute("aria-pressed", state.ch === "online");
     document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === state.tab));
   }
 
   function resetFilters() {
-    Object.assign(state, { q: "", brandQ: "", pMin: null, pMax: null, ch: "all", u30Min: null, u30Max: null, u12Min: null, u12Max: null, page: 0 });
+    Object.assign(state, { q: "", brandQ: "", hiddenOnly: false, pMin: null, pMax: null, ch: "all", u30Min: null, u30Max: null, u12Min: null, u12Max: null, page: 0 });
     state.brands.clear();
+    state.cats.clear();
   }
 
   // Events
@@ -569,6 +611,12 @@ td.opened { min-width: 320px; }
     state.page = 0; render();
   });
   $("brand-clear").addEventListener("click", () => { state.brands.clear(); state.page = 0; render(); });
+  $("cats").addEventListener("change", (e) => {
+    const v = e.target.value; e.target.checked ? state.cats.add(v) : state.cats.delete(v);
+    state.page = 0; render();
+  });
+  $("cat-clear").addEventListener("click", () => { state.cats.clear(); state.page = 0; render(); });
+  $("hidden-only").addEventListener("change", (e) => { state.hiddenOnly = e.target.checked; state.page = 0; render(); });
   const bindNum = (id, key) => $(id).addEventListener("input", (e) => debounced(() => { state[key] = num(e.target.value); state.page = 0; render(); }));
   bindNum("p-min", "pMin"); bindNum("p-max", "pMax");
   bindNum("u30-min", "u30Min"); bindNum("u30-max", "u30Max");
@@ -589,6 +637,8 @@ td.opened { min-width: 320px; }
     const k = c.dataset.chip;
     if (k === "q") state.q = "";
     else if (k.startsWith("brand:")) state.brands.delete(k.slice(6));
+    else if (k.startsWith("cat:")) state.cats.delete(k.slice(4));
+    else if (k === "hidden") state.hiddenOnly = false;
     else if (k === "price") { state.pMin = state.pMax = null; }
     else if (k === "u30") { state.u30Min = state.u30Max = null; }
     else if (k === "u12") { state.u12Min = state.u12Max = null; }
@@ -616,12 +666,16 @@ td.opened { min-width: 320px; }
     return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   function buildCsv(rows) {
-    const head = ["Product ID", "Product", "Brand", "Type", "Status", "Price (SGD)", "Highest variant price (SGD)", "Compare-at price (SGD)",
-      "Stock", "Variants", "Added", "Units 30 days, all channels", "Units 30 days, online", "Units 12 months, all channels", "Units 12 months, online", "URL"];
+    const head = ["Product ID", "Product", "Brand", "Type", "Department", "Sub-category", "Status", "Price (SGD)", "Highest variant price (SGD)", "Compare-at price (SGD)",
+      "Stock", "Variants", "Added", "Units 30 days, all channels", "Units 30 days, online", "Units 12 months, all channels", "Units 12 months, online",
+      "On Online Store", "Shows on collection pages", "Tags", "URL"];
     const lines = [head.map(csvCell).join(",")];
+    const yes = (b) => (b ? "Yes" : "No");
     for (const p of rows) {
-      lines.push([p.id, p.title, p.brand, p.type, TAB_LABEL[p.status], p.price_min, p.price_max, p.compare_at, p.stock, p.variants, p.created,
-        p["30d_all"], p["30d_online"], p["12m_all"], p["12m_online"], `https://${domain}/products/${p.handle}`].map(csvCell).join(","));
+      const depts = [...new Set(p._places.map((x) => x.d))].join("; "), subs = p._places.filter((x) => x.s).map((x) => x.s).join("; ");
+      lines.push([p.id, p.title, p.brand, p.type, depts, subs, TAB_LABEL[p.status], p.price_min, p.price_max, p.compare_at, p.stock, p.variants, p.created,
+        p["30d_all"], p["30d_online"], p["12m_all"], p["12m_online"], yes(p.on_online_store), yes(p.show_in_collections === "true"), p.tags.join(", "),
+        `https://${domain}/products/${p.handle}`].map(csvCell).join(","));
     }
     return "﻿" + lines.join("\r\n");
   }
@@ -788,13 +842,34 @@ td.opened { min-width: 320px; }
   setView(location.hash === "#search" ? "search" : "products");
 
   // Load
-  const invLoaded = loadJson("data-inventory", "data/inventory.json").then((d) => {
+  const invLoaded = Promise.all([loadJson("data-inventory", "data/inventory.json"), loadJson("data-tree", "data/tree.json")]).then(([d, tr]) => {
     domain = (d.shop && d.shop.domain) || domain;
     pulledAt = d.pulled_at;
+    // Each tag points to a department, and to a sub-category if it has one (tree.json, the website's menu).
+    tree = tr;
+    const tagPlace = new Map();
+    catLabel = new Map([["none", "No category"]]);
+    for (const dept of tree.departments) {
+      const add = (tag, sub) => { const k = tag.toLowerCase(); tagPlace.set(k, [...(tagPlace.get(k) || []), { dept, sub }]); };
+      catLabel.set(dept.handle, dept.label);
+      dept.tags.forEach((t) => add(t, null));
+      for (const sub of dept.subs) { catLabel.set(dept.handle + "/" + sub.handle, `${dept.label} › ${sub.label}`); sub.tags.forEach((t) => add(t, sub)); }
+    }
+    const placeOf = (p) => {
+      const keys = new Set(), places = [];
+      for (const t of p.tags) for (const { dept, sub } of tagPlace.get(t.toLowerCase()) || []) {
+        const k = sub ? dept.handle + "/" + sub.handle : dept.handle;
+        if (keys.has(k)) continue;
+        keys.add(k); keys.add(dept.handle);
+        places.push({ d: dept.label, s: sub ? sub.label : null });
+      }
+      return { _cats: keys.size ? [...keys] : ["none"], _places: places };
+    };
     products = d.products.map((p) => Object.assign(p, {
       _t: p.title.toLowerCase(),
-      _search: [p.title, p.brand, p.type].join(" ").toLowerCase(),
-    }));
+      _search: [p.title, p.brand, p.type, ...p.tags].join(" ").toLowerCase(),
+      _hidden: p.status !== "out_of_stock" && (!p.on_online_store || p.show_in_collections !== "true"),
+    }, placeOf(p)));
     const T = d.totals;
     const when = new Date(d.pulled_at).toLocaleString("en-SG", { timeZone: "Asia/Singapore", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
     const day = (s) => new Date(s + "T00:00:00").toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" });
